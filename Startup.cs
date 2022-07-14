@@ -1,6 +1,8 @@
 using AutoMapper;
 using HotelListing.Configuration;
 using HotelListing.Data;
+using HotelListing.IRepository;
+using HotelListing.Repository;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.HttpsPolicy;
@@ -31,7 +33,6 @@ namespace HotelListing
         public void ConfigureServices(IServiceCollection services)
         {
 
-            services.AddControllers();
             services.AddSwaggerGen(c =>
             {
                 c.SwaggerDoc("v1", new OpenApiInfo { Title = "HotelListing", Version = "v1" });
@@ -42,6 +43,8 @@ namespace HotelListing
                 options.UseSqlServer(Configuration.GetConnectionString("SqlConnection"))
             );
 
+            services.AddAuthentication();
+            services.ConfigureIdentity();
 
             services.AddCors(o =>
             {
@@ -52,7 +55,16 @@ namespace HotelListing
                      .AllowAnyHeader()
                  );
             });
+            services.AddControllers().AddNewtonsoftJson(op => op
+            .SerializerSettings.ReferenceLoopHandling =
+            Newtonsoft.Json.ReferenceLoopHandling.Ignore
+            );
+
             services.AddAutoMapper(typeof(MapperInitializer));
+
+            services.AddTransient<IUnitOfWork, UnitOfWork>();
+
+            
 
         }
 
