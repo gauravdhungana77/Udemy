@@ -20,6 +20,7 @@ namespace HotelListing.Data
         {
             base.OnModelCreating(modelBuilder);
             modelBuilder.Seed();
+            modelBuilder.ApplyConfiguration(new RoleConfiguration());
         }
 
     }
