@@ -1,6 +1,7 @@
 ﻿using AutoMapper;
 using HotelListing.Data;
 using HotelListing.Model;
+using HotelListing.Security;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -17,12 +18,12 @@ namespace HotelListing.Controllers
     {
         private readonly IMapper mapper;
         private readonly UserManager<ApiUser> userManager;
-        
+        private readonly IAuthManager authManager;
 
-        public AccountController(IMapper mapper,UserManager<ApiUser> userManager) { 
+        public AccountController(IMapper mapper,UserManager<ApiUser> userManager,IAuthManager authManager) { 
             this.mapper = mapper;
             this.userManager = userManager;
-          
+            this.authManager = authManager;
         }
 
         [HttpPost]
@@ -30,14 +31,17 @@ namespace HotelListing.Controllers
         [ProducesResponseType(StatusCodes.Status202Accepted)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
         public async Task<IActionResult> Register ([FromBody] UserDTO userDTO)
         {
             if (!ModelState.IsValid)
             {
                 return BadRequest(ModelState);
             }
+
             try
             {
+
                 var user = mapper.Map<ApiUser>(userDTO);
                 user.UserName = userDTO.Email;
                 var result = await userManager.CreateAsync(user, userDTO.Password);
@@ -60,35 +64,31 @@ namespace HotelListing.Controllers
             }
         }
 
-        //[HttpPost]
-        //[Route("login")]
-        //[ProducesResponseType(StatusCodes.Status202Accepted)]
-        //[ProducesResponseType(StatusCodes.Status401Unauthorized)]
-        //[ProducesResponseType(StatusCodes.Status400BadRequest)]
-        //[ProducesResponseType(StatusCodes.Status500InternalServerError)]
-        //public async Task<IActionResult> Login([FromBody] LoginDTO login)
-        //{
-        //    if (!ModelState.IsValid)
-        //    {
-        //        return BadRequest(ModelState);
-        //    }
-        //    try
-        //    {
-               
-        //        var result = await signInManager.PasswordSignInAsync(login.Email,login.Password,false,false);
-        //        if (!result.Succeeded)
-        //        {
-        //            return Unauthorized("");
+        [HttpPost]
+        [Route("login")]
+        [ProducesResponseType(StatusCodes.Status202Accepted)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        public async Task<IActionResult> Login([FromBody] LoginDTO login)
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState);
+            }
+            try
+            {
+                if (!await authManager.ValidateUser(login))
+                {
+                    return Unauthorized();
+                }
 
-        //        }
-
-        //        return Accepted();
-
-        //    }
-        //    catch (Exception ex)
-        //    {
-        //        return Problem($"Something went wroung in the {nameof(Login)}", statusCode: 500);
-        //    }
-        //}
+                return Accepted(new { Token = await authManager.CreateToken() });
+            }
+            catch (Exception ex)
+            {
+                return Problem($"Something went wroung in the {nameof(Login)}", statusCode: 500);
+            }
+        }
     }
 }
